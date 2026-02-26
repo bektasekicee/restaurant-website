@@ -642,7 +642,22 @@ async function init() {
 
     applySiteConfig(); renderCategories(); renderProducts();
     document.getElementById('statProducts').textContent = products.length;
-  } catch(e) { console.error('Init error:', e); }
+  } catch(e) {
+    console.error('Init error:', e);
+    document.getElementById('loadingScreen').innerHTML =
+      '<div style="text-align:center;padding:40px;max-width:500px">' +
+      '<div style="font-size:48px;margin-bottom:16px">⚠️</div>' +
+      '<h2 style="margin-bottom:12px;font-family:Playfair Display,serif">Bağlantı Hatası</h2>' +
+      '<p style="color:#777;margin-bottom:20px;font-size:14px">' + (e.message || e) + '</p>' +
+      '<div style="background:#f5f5f5;padding:16px;border-radius:12px;text-align:left;font-size:13px;color:#555">' +
+      '<b>Kontrol edin:</b><br>' +
+      '1. POS\'tan "Menüyü Cloud\'a Sync Et" yapıldı mı?<br>' +
+      '2. Supabase URL ve Anon Key doğru mu?<br>' +
+      '3. Dosyayı file:// yerine bir sunucudan açın<br>' +
+      '4. İnternet bağlantınızı kontrol edin</div>' +
+      '<button onclick="location.reload()" style="margin-top:20px;padding:12px 32px;background:#C8553D;color:white;border:none;border-radius:50px;font-size:15px;cursor:pointer;font-weight:600">Tekrar Dene</button>' +
+      '</div>';
+  }
   document.getElementById('loadingScreen').classList.add('hidden');
 }
 

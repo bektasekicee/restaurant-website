@@ -594,7 +594,7 @@ const BRANCH_ID = 1;
 
 let SITE = { name:'Restoran', phone:'0555 555 55 55', address:'Merkez Mah. Atatürk Cad. No:1', hours:'Her gün 10:00 - 22:00', currency:'₺' };
 
-let supabase, categories=[], products=[], optionGroups={};
+let sb, categories=[], products=[], optionGroups={};
 let cart=[], selectedCategory='all', orderType='delivery';
 let currentProduct=null, detailQty=1, detailOptions={};
 
@@ -602,15 +602,19 @@ let currentProduct=null, detailQty=1, detailOptions={};
 //  INIT
 // ═══════════════════════════════════════
 async function init() {
+  const loadEl = document.getElementById('loadingScreen');
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase client oluşturuldu');
 
-    const {data:branch} = await supabase.from('qr_branches').select('*').eq('id', BRANCH_ID).single();
-    if (branch) { SITE.name = branch.name||SITE.name; SITE.currency = branch.currency||'₺'; }
+    // Şube bilgisi
+    const {data:branch, error:bErr} = await sb.from('qr_branches').select('*').eq('id', BRANCH_ID).single();
+    if (bErr) console.warn('⚠️ Branch hatası:', bErr.message);
+    else if (branch) { SITE.name = branch.name||SITE.name; SITE.currency = branch.currency||'₺'; console.log('✅ Şube:', branch.name); }
 
-    // Web ayarları (opsiyonel tablo)
+    // Web ayarları (opsiyonel)
     try {
-      const {data:ws} = await supabase.from('web_settings').select('*').eq('branch_id', BRANCH_ID).single();
+      const {data:ws} = await sb.from('web_settings').select('*').eq('branch_id', BRANCH_ID).single();
       if (ws) {
         SITE.phone = ws.phone||SITE.phone; SITE.address = ws.address||SITE.address;
         SITE.hours = ws.hours||SITE.hours;
@@ -618,21 +622,27 @@ async function init() {
         if (ws.hero_desc) document.getElementById('heroDesc').textContent = ws.hero_desc;
         if (ws.primary_color) document.documentElement.style.setProperty('--primary', ws.primary_color);
       }
-    } catch(e) { /* web_settings tablosu yoksa devam */ }
+    } catch(e) { console.warn('⚠️ web_settings tablosu yok, sorun değil:', e.message); }
 
-    const {data:cats} = await supabase.from('qr_categories').select('*').eq('branch_id', BRANCH_ID).eq('is_active', true).order('sort_order');
+    // Kategoriler
+    const {data:cats, error:cErr} = await sb.from('qr_categories').select('*').eq('branch_id', BRANCH_ID).eq('is_active', true).order('sort_order');
+    if (cErr) console.warn('⚠️ Kategori hatası:', cErr.message);
     categories = cats||[];
+    console.log('✅ Kategoriler:', categories.length);
 
-    const {data:prods} = await supabase.from('qr_products').select('*').eq('branch_id', BRANCH_ID).eq('is_active', true).order('sort_order');
+    // Ürünler
+    const {data:prods, error:pErr} = await sb.from('qr_products').select('*').eq('branch_id', BRANCH_ID).eq('is_active', true).order('sort_order');
+    if (pErr) console.warn('⚠️ Ürün hatası:', pErr.message);
     products = prods||[];
+    console.log('✅ Ürünler:', products.length);
 
     // Opsiyonları toplu çek
     if (products.length > 0) {
       const pids = products.map(p=>p.id);
-      const {data:groups} = await supabase.from('qr_option_groups').select('*').in('product_id', pids).eq('is_active', true).order('sort_order');
+      const {data:groups} = await sb.from('qr_option_groups').select('*').in('product_id', pids).eq('is_active', true).order('sort_order');
       if (groups && groups.length > 0) {
         const gids = groups.map(g=>g.id);
-        const {data:items} = await supabase.from('qr_option_items').select('*').in('group_id', gids).eq('is_active', true).order('sort_order');
+        const {data:items} = await sb.from('qr_option_items').select('*').in('group_id', gids).eq('is_active', true).order('sort_order');
         for (const g of groups) {
           if (!optionGroups[g.product_id]) optionGroups[g.product_id] = [];
           optionGroups[g.product_id].push({ group: g, items: (items||[]).filter(i=>i.group_id===g.id) });
@@ -642,9 +652,19 @@ async function init() {
 
     applySiteConfig(); renderCategories(); renderProducts();
     document.getElementById('statProducts').textContent = products.length;
+
+    if (products.length === 0) {
+      document.getElementById('menuGrid').innerHTML =
+        '<div style="text-align:center;grid-column:1/-1;padding:60px">' +
+        '<div style="font-size:48px;margin-bottom:12px">📭</div>' +
+        '<p style="color:#777;font-size:16px;font-weight:600">Menü henüz yüklenmemiş</p>' +
+        '<p style="color:#aaa;font-size:13px;margin-top:8px">POS uygulamasından Ayarlar → QR Menü → "Menüyü Cloud\'a Sync Et" yapın</p>' +
+        '</div>';
+    }
+
   } catch(e) {
-    console.error('Init error:', e);
-    document.getElementById('loadingScreen').innerHTML =
+    console.error('❌ Init error:', e);
+    loadEl.innerHTML =
       '<div style="text-align:center;padding:40px;max-width:500px">' +
       '<div style="font-size:48px;margin-bottom:16px">⚠️</div>' +
       '<h2 style="margin-bottom:12px;font-family:Playfair Display,serif">Bağlantı Hatası</h2>' +
@@ -653,12 +673,12 @@ async function init() {
       '<b>Kontrol edin:</b><br>' +
       '1. POS\'tan "Menüyü Cloud\'a Sync Et" yapıldı mı?<br>' +
       '2. Supabase URL ve Anon Key doğru mu?<br>' +
-      '3. Dosyayı file:// yerine bir sunucudan açın<br>' +
-      '4. İnternet bağlantınızı kontrol edin</div>' +
+      '3. İnternet bağlantınızı kontrol edin</div>' +
       '<button onclick="location.reload()" style="margin-top:20px;padding:12px 32px;background:#C8553D;color:white;border:none;border-radius:50px;font-size:15px;cursor:pointer;font-weight:600">Tekrar Dene</button>' +
       '</div>';
+    return; // Hata varsa loading ekranını kaldırma, hata mesajını göster
   }
-  document.getElementById('loadingScreen').classList.add('hidden');
+  loadEl.classList.add('hidden');
 }
 
 function applySiteConfig() {
@@ -802,7 +822,7 @@ async function submitOrder() {
 
     const custInfo = name+' | '+phone+(address?' | '+address:'');
 
-    const {data:order,error:oErr} = await supabase.from('qr_orders').insert({
+    const {data:order,error:oErr} = await sb.from('qr_orders').insert({
       branch_id: BRANCH_ID, table_id: null, order_number: orderNum,
       total_amount: total, status: 'pending', source: 'web',
       order_type: orderType, customer_name: name, customer_phone: phone,
@@ -812,7 +832,7 @@ async function submitOrder() {
     if(oErr) throw oErr;
 
     const ois = items.map(it=>({order_id:order.id,product_id:it.product_id,product_name:it.product_name,quantity:it.quantity,unit_price:it.unit_price,option_price:it.option_price,total_price:it.total_price,selected_options:it.selected_options,note:it.note}));
-    const {error:iErr} = await supabase.from('qr_order_items').insert(ois);
+    const {error:iErr} = await sb.from('qr_order_items').insert(ois);
     if(iErr) throw iErr;
 
     closeCheckout(); cart=[]; updateCartUI();

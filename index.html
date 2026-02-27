@@ -743,8 +743,8 @@ async function init() {
     return; // Hata varsa loading ekranını kaldırma, hata mesajını göster
   }
 
-  // Kampanyaları yükle
-  await loadCampaigns();
+  // Kampanyaları yükle (tablo yoksa sorun değil)
+  try { await loadCampaigns(); } catch(e) { console.warn('Kampanya yükleme atlandı:', e); }
 
   loadEl.classList.add('hidden');
 }
@@ -918,7 +918,6 @@ async function submitOrder() {
     document.getElementById('successOverlay').classList.add('open');
     ['custName','custPhone','custAddress','custNote','couponCode'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('couponResult').innerHTML='';
-  } catch(e) { console.error('Order error:',e); alert('Sipariş gönderilemedi: '+(e.message||'Bağlantı hatası')); }
   } catch(e) { console.error('Order error:',e); alert('Sipariş gönderilemedi: '+(e.message||'Bağlantı hatası')); }
   btn.disabled=false; btn.textContent='✓ Siparişi Gönder';
 }

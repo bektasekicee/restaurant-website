@@ -2,7 +2,14 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#C8553D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Restoran">
+<meta name="description" content="Online yemek siparişi - Adrese teslim veya gel al">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C8553D'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='white'>🍽️</text></svg>">
 <title>Restoran</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -412,6 +419,36 @@ textarea.form-input { min-height: 80px; resize: vertical; }
   .menu-grid { grid-template-columns: 1fr; }
   .order-type-selector { grid-template-columns: 1fr; }
 }
+/* ── Kampanyalar ── */
+.campaigns-scroll { display:flex; gap:16px; overflow-x:auto; padding:8px 0 16px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
+.campaigns-scroll::-webkit-scrollbar { display:none; }
+.campaign-card { min-width:300px; max-width:340px; scroll-snap-align:start; border-radius:20px; overflow:hidden; position:relative; cursor:pointer; flex-shrink:0; transition:transform .3s; }
+.campaign-card:hover { transform:translateY(-4px); }
+.campaign-card .camp-bg { height:160px; background:linear-gradient(135deg, var(--primary), var(--accent)); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+.campaign-card .camp-bg::before { content:''; position:absolute; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.08); top:-60px; right:-60px; }
+.campaign-card .camp-bg .camp-icon { font-size:56px; z-index:1; }
+.campaign-card .camp-badge { position:absolute; top:12px; right:12px; background:var(--success); color:white; padding:4px 12px; border-radius:50px; font-size:12px; font-weight:700; }
+.campaign-card .camp-body { background:white; padding:16px; }
+.campaign-card .camp-body h4 { font-family:'Playfair Display',serif; font-size:16px; margin-bottom:4px; color:var(--dark); }
+.campaign-card .camp-body p { font-size:13px; color:var(--text-light); line-height:1.4; }
+.campaign-card .camp-body .camp-code { margin-top:8px; background:var(--primary-light); padding:6px 12px; border-radius:8px; font-family:monospace; font-size:14px; font-weight:700; color:var(--primary); display:inline-block; }
+
+/* PWA Install Banner */
+.pwa-install { display:none; position:fixed; bottom:0; left:0; right:0; background:white; padding:16px 20px; box-shadow:0 -4px 24px rgba(0,0,0,0.12); z-index:9999; border-radius:20px 20px 0 0; }
+.pwa-install.show { display:flex; align-items:center; gap:14px; }
+.pwa-install .pwa-icon { font-size:36px; }
+.pwa-install .pwa-text { flex:1; }
+.pwa-install .pwa-text h4 { font-size:15px; font-weight:700; margin-bottom:2px; }
+.pwa-install .pwa-text p { font-size:12px; color:var(--text-light); }
+.pwa-install button { padding:10px 24px; background:var(--primary); color:white; border:none; border-radius:50px; font-weight:700; font-size:14px; cursor:pointer; }
+.pwa-install .pwa-close { background:none; color:var(--text-light); padding:8px; font-size:18px; }
+
+/* Checkout campaign code input */
+.coupon-row { display:flex; gap:8px; margin-top:12px; }
+.coupon-row input { flex:1; padding:10px 14px; border:2px solid #e0e0e0; border-radius:12px; font-size:14px; }
+.coupon-row input:focus { border-color:var(--primary); outline:none; }
+.coupon-row button { padding:10px 20px; background:var(--success); color:white; border:none; border-radius:12px; font-weight:700; font-size:13px; cursor:pointer; }
+.discount-badge { background:var(--success); color:white; padding:4px 10px; border-radius:8px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:4px; }
 </style>
 </head>
 <body>
@@ -492,6 +529,14 @@ textarea.form-input { min-height: 80px; resize: vertical; }
   </div>
 </section>
 
+<!-- Kampanyalar -->
+<section class="section" id="campaigns" style="display:none; padding-top:20px; padding-bottom:0;">
+  <div class="container">
+    <div class="section-header"><h2>🔥 Kampanyalar</h2><p>Fırsatları kaçırmayın</p></div>
+    <div class="campaigns-scroll" id="campaignList"></div>
+  </div>
+</section>
+
 <section class="section" id="menu">
   <div class="container">
     <div class="section-header"><h2>Menümüz</h2><p>Birbirinden lezzetli seçeneklerimizi keşfedin</p></div>
@@ -544,6 +589,14 @@ textarea.form-input { min-height: 80px; resize: vertical; }
       <div class="form-group"><label>Telefon <span class="required">*</span></label><input class="form-input" id="custPhone" placeholder="05XX XXX XX XX" type="tel"></div>
       <div class="form-group" id="addressGroup"><label>Adres <span class="required">*</span></label><textarea class="form-input" id="custAddress" placeholder="Teslimat adresiniz"></textarea></div>
       <div class="form-group"><label>Sipariş Notu</label><input class="form-input" id="custNote" placeholder="Ekstra istekleriniz (opsiyonel)"></div>
+      <div class="form-group" id="couponGroup">
+        <label>Kampanya Kodu</label>
+        <div class="coupon-row">
+          <input class="form-input" id="couponCode" placeholder="Kupon kodunuz varsa girin">
+          <button onclick="applyCoupon()">Uygula</button>
+        </div>
+        <div id="couponResult" style="margin-top:8px;font-size:13px;"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <div class="order-summary" id="orderSummary"></div>
@@ -571,6 +624,17 @@ textarea.form-input { min-height: 80px; resize: vertical; }
       <button class="detail-add-btn" id="detailAddBtn" onclick="addFromDetail()">Sepete Ekle — ₺0</button>
     </div>
   </div>
+</div>
+
+<!-- PWA Install Banner -->
+<div class="pwa-install" id="pwaInstall">
+  <span class="pwa-icon">📲</span>
+  <div class="pwa-text">
+    <h4>Uygulamayı Yükle</h4>
+    <p>Ana ekrana ekleyin, uygulama gibi kullanın</p>
+  </div>
+  <button onclick="installPWA()">Yükle</button>
+  <button class="pwa-close" onclick="dismissPWA()">✕</button>
 </div>
 
 <!-- Success -->
@@ -678,6 +742,10 @@ async function init() {
       '</div>';
     return; // Hata varsa loading ekranını kaldırma, hata mesajını göster
   }
+
+  // Kampanyaları yükle
+  await loadCampaigns();
+
   loadEl.classList.add('hidden');
 }
 
@@ -795,10 +863,17 @@ function toggleCart() { document.getElementById('cartOverlay').classList.toggle(
 // ═══════════════════════════════════════
 function openCheckout() {
   if(!cart.length) return; toggleCart();
-  let total=0, h='';
-  cart.forEach(item=>{ const lt=(item.unitPrice+item.optionPrice)*item.qty; total+=lt; h+='<div class="order-summary-row"><span>'+item.qty+'x '+item.productName+'</span><span>'+SITE.currency+fmtP(lt)+'</span></div>'; });
-  h+='<div class="order-summary-row total"><span>Toplam</span><span>'+SITE.currency+fmtP(total)+'</span></div>';
-  document.getElementById('orderSummary').innerHTML=h;
+  // Kupon alanını sıfırla
+  document.getElementById('couponCode').value = '';
+  document.getElementById('couponResult').innerHTML = '';
+  if (!appliedCampaign || appliedCampaign.code) appliedCampaign = null;
+  // Kodsuz kampanyayı otomatik uygula
+  const autoC = campaigns.find(c => !c.code && c.is_active);
+  if (autoC && !appliedCampaign) {
+    const total = cart.reduce((s,i) => s + (i.unitPrice+i.optionPrice)*i.qty, 0);
+    if (!autoC.min_order_amount || total >= autoC.min_order_amount) appliedCampaign = autoC;
+  }
+  updateCheckoutSummary();
   document.getElementById('checkoutModal').classList.add('open');
 }
 function closeCheckout() { document.getElementById('checkoutModal').classList.remove('open'); }
@@ -817,9 +892,12 @@ async function submitOrder() {
 
   try {
     const orderNum = Date.now()%100000;
-    let total=0;
-    const items = cart.map(c=>{ const lt=(c.unitPrice+c.optionPrice)*c.qty; total+=lt; return {product_id:c.productId,product_name:c.productName,quantity:c.qty,unit_price:c.unitPrice,option_price:c.optionPrice,total_price:lt,selected_options:c.options,note:c.note||''}; });
+    let subtotal=0;
+    const items = cart.map(c=>{ const lt=(c.unitPrice+c.optionPrice)*c.qty; subtotal+=lt; return {product_id:c.productId,product_name:c.productName,quantity:c.qty,unit_price:c.unitPrice,option_price:c.optionPrice,total_price:lt,selected_options:c.options,note:c.note||''}; });
 
+    const discount = calcDiscount(subtotal);
+    const total = subtotal - discount;
+    const discountNote = appliedCampaign ? ' [KAMPANYA: ' + appliedCampaign.title + (appliedCampaign.code ? ' (' + appliedCampaign.code + ')' : '') + ' -' + SITE.currency + fmtP(discount) + ']' : '';
     const custInfo = name+' | '+phone+(address?' | '+address:'');
 
     const {data:order,error:oErr} = await sb.from('qr_orders').insert({
@@ -827,7 +905,7 @@ async function submitOrder() {
       total_amount: total, status: 'pending', source: 'web',
       order_type: orderType, customer_name: name, customer_phone: phone,
       customer_address: address||null,
-      note: (note?note+' | ':'')+custInfo,
+      note: (note?note+' | ':'')+custInfo+discountNote,
     }).select().single();
     if(oErr) throw oErr;
 
@@ -835,10 +913,12 @@ async function submitOrder() {
     const {error:iErr} = await sb.from('qr_order_items').insert(ois);
     if(iErr) throw iErr;
 
-    closeCheckout(); cart=[]; updateCartUI();
+    closeCheckout(); cart=[]; appliedCampaign=null; updateCartUI();
     document.getElementById('successOrderNum').textContent='#'+orderNum;
     document.getElementById('successOverlay').classList.add('open');
-    ['custName','custPhone','custAddress','custNote'].forEach(id=>document.getElementById(id).value='');
+    ['custName','custPhone','custAddress','custNote','couponCode'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('couponResult').innerHTML='';
+  } catch(e) { console.error('Order error:',e); alert('Sipariş gönderilemedi: '+(e.message||'Bağlantı hatası')); }
   } catch(e) { console.error('Order error:',e); alert('Sipariş gönderilemedi: '+(e.message||'Bağlantı hatası')); }
   btn.disabled=false; btn.textContent='✓ Siparişi Gönder';
 }
@@ -860,6 +940,159 @@ document.querySelectorAll('.fade-in').forEach(el=>{el.style.animationPlayState='
 function toggleMobileMenu() { const l=document.getElementById('navLinks'); l.style.display=l.style.display==='flex'?'none':'flex'; }
 
 init();
+
+// ═══════════════════════════════════════
+//  KAMPANYALAR
+// ═══════════════════════════════════════
+
+let campaigns = [];
+let appliedCampaign = null;
+
+async function loadCampaigns() {
+  try {
+    const now = new Date().toISOString();
+    const {data, error} = await sb.from('web_campaigns').select('*')
+      .eq('branch_id', BRANCH_ID).eq('is_active', true)
+      .or('end_date.is.null,end_date.gte.' + now)
+      .order('created_at', {ascending: false});
+    if (error) { console.warn('Kampanya yükleme hatası:', error.message); return; }
+    campaigns = data || [];
+    if (campaigns.length > 0) {
+      document.getElementById('campaigns').style.display = '';
+      renderCampaigns();
+    }
+  } catch(e) { console.warn('Kampanya hatası:', e); }
+}
+
+function renderCampaigns() {
+  const el = document.getElementById('campaignList');
+  const colors = [
+    ['#C8553D','#F28C38'], ['#3D9970','#2ECC71'], ['#0074D9','#7FDBFF'],
+    ['#B10DC9','#F012BE'], ['#FF851B','#FFDC00']
+  ];
+  el.innerHTML = campaigns.map((c, i) => {
+    const [c1, c2] = colors[i % colors.length];
+    const disc = c.discount_type === 'percent' ? `%${c.discount_value}` : `${SITE.currency}${fmtP(c.discount_value)}`;
+    const minTxt = c.min_order_amount > 0 ? `<p>${SITE.currency}${fmtP(c.min_order_amount)} ve üzeri siparişlerde</p>` : '';
+    const codeTxt = c.code ? `<div class="camp-code">${c.code}</div>` : '';
+    return `<div class="campaign-card" onclick="useCampaign('${c.id}')">
+      <div class="camp-bg" style="background:linear-gradient(135deg,${c1},${c2})">
+        <span class="camp-icon">${c.discount_type==='percent'?'🏷️':'💰'}</span>
+        <span class="camp-badge">${disc} İNDİRİM</span>
+      </div>
+      <div class="camp-body">
+        <h4>${c.title}</h4>
+        ${c.description?'<p>'+c.description+'</p>':''}
+        ${minTxt}
+        ${codeTxt}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function useCampaign(id) {
+  const c = campaigns.find(x => x.id === id);
+  if (!c) return;
+  if (c.code) {
+    // Kupon kodlu kampanya — checkout'a git, kodu otomatik doldur
+    if (cart.length === 0) { alert('Önce sepete ürün ekleyin!'); return; }
+    openCheckout();
+    document.getElementById('couponCode').value = c.code;
+    applyCoupon();
+  } else {
+    // Kodsuz kampanya — otomatik uygula
+    appliedCampaign = c;
+    if (cart.length > 0) openCheckout();
+  }
+}
+
+function applyCoupon() {
+  const code = document.getElementById('couponCode').value.trim().toUpperCase();
+  const resultEl = document.getElementById('couponResult');
+
+  if (!code) { resultEl.innerHTML = ''; appliedCampaign = null; updateCheckoutSummary(); return; }
+
+  const match = campaigns.find(c => c.code && c.code.toUpperCase() === code && c.is_active);
+  if (!match) {
+    resultEl.innerHTML = '<span style="color:#e74c3c">❌ Geçersiz kupon kodu</span>';
+    appliedCampaign = null;
+    updateCheckoutSummary();
+    return;
+  }
+
+  const total = cart.reduce((s, i) => s + i.total, 0);
+  if (match.min_order_amount && total < match.min_order_amount) {
+    resultEl.innerHTML = `<span style="color:#e74c3c">❌ Minimum sipariş tutarı: ${SITE.currency}${fmtP(match.min_order_amount)}</span>`;
+    appliedCampaign = null;
+    updateCheckoutSummary();
+    return;
+  }
+
+  appliedCampaign = match;
+  const disc = match.discount_type === 'percent' ? `%${match.discount_value}` : `${SITE.currency}${fmtP(match.discount_value)}`;
+  resultEl.innerHTML = `<span class="discount-badge">✅ ${disc} indirim uygulandı!</span>`;
+  updateCheckoutSummary();
+}
+
+function calcDiscount(subtotal) {
+  if (!appliedCampaign) return 0;
+  if (appliedCampaign.discount_type === 'percent') {
+    return subtotal * appliedCampaign.discount_value / 100;
+  }
+  return Math.min(appliedCampaign.discount_value, subtotal);
+}
+
+function updateCheckoutSummary() {
+  const subtotal = cart.reduce((s, i) => s + (i.unitPrice+i.optionPrice)*i.qty, 0);
+  const discount = calcDiscount(subtotal);
+  const finalTotal = subtotal - discount;
+  let h = '';
+  cart.forEach(i => {
+    const lt = (i.unitPrice+i.optionPrice)*i.qty;
+    let extras = '';
+    if (i.optionNames && i.optionNames.length) extras = '<br><small style="color:#999">' + i.optionNames.join(', ') + '</small>';
+    h += '<div class="order-summary-row"><span>' + i.qty + 'x ' + i.productName + extras + '</span><span>' + SITE.currency + fmtP(lt) + '</span></div>';
+  });
+  if (discount > 0) {
+    h += '<div class="order-summary-row" style="color:var(--success)"><span>🏷️ İndirim' + (appliedCampaign.code ? ' (' + appliedCampaign.code + ')' : '') + '</span><span>-' + SITE.currency + fmtP(discount) + '</span></div>';
+  }
+  h += '<div class="order-summary-row total"><span>Toplam</span><span>' + SITE.currency + fmtP(finalTotal) + '</span></div>';
+  document.getElementById('orderSummary').innerHTML = h;
+}
+
+// ═══════════════════════════════════════
+//  PWA INSTALL
+// ═══════════════════════════════════════
+
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Daha önce kapatılmadıysa göster
+  if (!localStorage.getItem('pwa-dismissed')) {
+    setTimeout(() => document.getElementById('pwaInstall').classList.add('show'), 3000);
+  }
+});
+
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r => {
+    deferredPrompt = null;
+    document.getElementById('pwaInstall').classList.remove('show');
+  });
+}
+
+function dismissPWA() {
+  document.getElementById('pwaInstall').classList.remove('show');
+  localStorage.setItem('pwa-dismissed', '1');
+}
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW hata:', e));
+}
 </script>
 </body>
 </html>

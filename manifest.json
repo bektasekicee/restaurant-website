@@ -1,0 +1,18 @@
+{
+  "name": "Restoran - Online Sipariş",
+  "short_name": "Restoran",
+  "description": "Online yemek siparişi verin, adrese teslim veya gel al",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDFAF7",
+  "theme_color": "#C8553D",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C8553D'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='white'>🍽️</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
